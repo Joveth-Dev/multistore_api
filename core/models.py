@@ -16,6 +16,8 @@ class User(AbstractUser):
         validators=[username_validator],
     )
     email = models.EmailField(unique=True)
+    birth_date = models.DateField()
+    address = models.TextField()
 
     objects = UserManager()
     USERNAME_FIELD = "email"
