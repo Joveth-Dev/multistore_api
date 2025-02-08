@@ -16,7 +16,6 @@ class UserAdmin(BaseUserAdmin):
             _("Personal info"),
             {
                 "fields": (
-                    "username",
                     "first_name",
                     "last_name",
                     "birth_date",
@@ -38,3 +37,4 @@ class UserAdmin(BaseUserAdmin):
         ),
         (_("Important dates"), {"fields": ("last_login", "date_joined")}),
     )
+    ordering = ["-date_joined"]
