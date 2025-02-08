@@ -1,7 +1,15 @@
 from djoser.serializers import UserCreateSerializer as BaseUserCreateSerializer
+from rest_framework import serializers
+
+from .validators import validate_age
 
 
 class UserCreateSerializer(BaseUserCreateSerializer):
+    first_name = serializers.CharField(required=True)
+    last_name = serializers.CharField(required=True)
+    birth_date = serializers.DateField(validators=[validate_age], required=True)
+    address = serializers.CharField(required=True)
+
     class Meta(BaseUserCreateSerializer.Meta):
         fields = BaseUserCreateSerializer.Meta.fields + (
             "first_name",
@@ -11,7 +19,7 @@ class UserCreateSerializer(BaseUserCreateSerializer):
         )
 
 
-class CurrentUserSerializer(UserCreateSerializer):
+class UserSerializer(UserCreateSerializer):
     class Meta(UserCreateSerializer.Meta):
         fields = tuple(
             field for field in UserCreateSerializer.Meta.fields if field != "password"
