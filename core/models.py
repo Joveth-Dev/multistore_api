@@ -4,6 +4,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from .managers import UserManager
+from .validators import validate_age
 
 
 class User(AbstractUser):
@@ -16,8 +17,8 @@ class User(AbstractUser):
         validators=[username_validator],
     )
     email = models.EmailField(unique=True)
-    birth_date = models.DateField()
-    address = models.TextField()
+    birth_date = models.DateField(validators=[validate_age], null=True, blank=True)
+    address = models.TextField(null=True, blank=True)
 
     objects = UserManager()
     USERNAME_FIELD = "email"
