@@ -37,4 +37,5 @@ class UserAdmin(BaseUserAdmin):
         ),
         (_("Important dates"), {"fields": ("last_login", "date_joined")}),
     )
+    list_display = ("email", "first_name", "last_name", "is_active", "is_staff")
     ordering = ["-date_joined"]
