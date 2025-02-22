@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "djoser",
     "corsheaders",
     "core",
+    "store",
 ]
 
 MIDDLEWARE = [
