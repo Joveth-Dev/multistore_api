@@ -1,8 +1,6 @@
 #!/bin/bash
 
 # Apply database migrations
-echo "Making migrations..."
-python manage.py makemigrations
 echo "Migrating to database..."
 python manage.py migrate
 
