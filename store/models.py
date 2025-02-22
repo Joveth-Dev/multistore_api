@@ -26,6 +26,8 @@ class Store(models.Model):
     description = models.TextField()
     opening_time = models.TimeField()
     closing_time = models.TimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def clean(self):
         if self.opening_time == self.closing_time:
