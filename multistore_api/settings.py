@@ -187,7 +187,7 @@ DJOSER = {
     "EMAIL_FRONTEND_PROTOCOL": "http" if DEBUG else "https",
     "EMAIL_FRONTEND_DOMAIN": os.getenv("FRONTEND_DOMAIN"),
     "EMAIL_FRONTEND_SITE_NAME": "FoodVille",
-    "ACTIVATION_URL": "activate/?uuid={uid}&token={token}",
+    "ACTIVATION_URL": "multistore_system#/activate/?uuid={uid}&token={token}",
     "SEND_ACTIVATION_EMAIL": True,
     "SERIALIZERS": {
         "user_create": "core.serializers.UserCreateSerializer",
