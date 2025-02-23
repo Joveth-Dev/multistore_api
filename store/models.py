@@ -8,9 +8,14 @@ from .validators import validate_mobile_number
 class Address(models.Model):
     city = models.CharField(max_length=30)
     province = models.CharField(max_length=30)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.city}, {self.province}"
+
+    class Meta:
+        ordering = ["-updated_at", "-created_at"]
 
 
 class Store(models.Model):
@@ -35,3 +40,6 @@ class Store(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.address.city}"
+
+    class Meta:
+        ordering = ["-updated_at", "-created_at"]
