@@ -26,8 +26,8 @@ class Store(models.Model):
     address = models.OneToOneField(Address, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     image = models.ImageField(
-        upload_to="store/images",
-        default="store/images/default.jpg",
+        upload_to="store/store/images",
+        default="store/store/images/default.jpg",
         validators=[validate_file_size],
     )
     mobile_number = models.CharField(
@@ -42,7 +42,7 @@ class Store(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.address.city}"
-    
+
     def delete(self, *args, **kwargs):
         self.image.delete(save=False)
         self.address.delete()
@@ -51,16 +51,40 @@ class Store(models.Model):
     def clean(self):
         if self.opening_time == self.closing_time:
             raise ValidationError("Opening time and closing time cannot be the same.")
-        
+
     @property
     def is_open(self):
         """Check if the store is currently open based on the opening and closing time."""
         now = datetime.now().time()
 
         if self.opening_time < self.closing_time:
-            return self.opening_time <= now < self.closing_time  # Regular case (same day)
+            return (
+                self.opening_time <= now < self.closing_time
+            )  # Regular case (same day)
         else:
-            return now >= self.opening_time or now < self.closing_time  # Overnight case (e.g., 10 PM to 6 AM)
+            return (
+                now >= self.opening_time or now < self.closing_time
+            )  # Overnight case (e.g., 10 PM to 6 AM)
+
+    class Meta:
+        ordering = ["-updated_at", "-created_at"]
+
+
+class Product(models.Model):
+    store = models.ForeignKey(Store, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    price = models.DecimalField(max_digits=8, decimal_places=2)
+    image = models.ImageField(
+        upload_to="store/product/images",
+        default="store/product/default.jpg",
+        validators=[validate_file_size],
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
 
     class Meta:
         ordering = ["-updated_at", "-created_at"]
