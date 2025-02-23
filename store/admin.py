@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Address, Product, Store
+from .models import Address, Category, Product, Store
 
 
 @admin.register(Address)
@@ -24,14 +24,26 @@ class StoreAdmin(admin.ModelAdmin):
     list_select_related = ["user"]
 
 
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = (
+        "store",
+        "name",
+        "created_at",
+        "updated_at",
+    )
+    list_select_related = ["store"]
+
+
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     list_display = (
         "name",
+        "category",
         "store",
         "price",
         "image",
         "created_at",
         "updated_at",
     )
-    list_select_related = ["store"]
+    list_select_related = ["store", "category"]
