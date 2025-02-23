@@ -1,6 +1,11 @@
 from django.contrib import admin
 
-from .models import Store
+from .models import Address, Store
+
+
+@admin.register(Address)
+class AddressAdmin(admin.ModelAdmin):
+    list_display = ["city", "province", "created_at", "updated_at"]
 
 
 @admin.register(Store)
@@ -14,4 +19,3 @@ class StoreAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
-    ordering = ["-updated_at", "-created_at"]
