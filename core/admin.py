@@ -5,8 +5,6 @@ from django.utils.translation import gettext_lazy as _
 
 from .models import User
 
-admin.site.unregister(Group)
-
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
