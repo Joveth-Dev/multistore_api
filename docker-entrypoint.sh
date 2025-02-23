@@ -13,4 +13,4 @@ echo "Executing management command: create_store_owner_group"
 python manage.py create_store_owner_group
 
 echo "Starting server..."
-gunicorn multistore_api.wsgi:application --bind=0.0.0.0:8000 --reload --reload-engine='inotify'
+gunicorn multistore_api.wsgi:application --bind=0.0.0.0:8000 --timeout 60 --reload
