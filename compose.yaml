@@ -8,7 +8,6 @@ services:
       - .env
     volumes:
       - static:/usr/src/app/static
-      - media:/usr/src/app/media
     develop:
       watch:
         - action: rebuild
@@ -51,6 +50,5 @@ services:
 
 volumes:
   static:
-  media:
   multistore_api_data:
   multistore_api_data_backup:
