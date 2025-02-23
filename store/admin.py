@@ -11,6 +11,7 @@ class AddressAdmin(admin.ModelAdmin):
 @admin.register(Store)
 class StoreAdmin(admin.ModelAdmin):
     list_display = (
+        "user",
         "name",
         "mobile_number",
         "delivery_fee",
@@ -18,4 +19,6 @@ class StoreAdmin(admin.ModelAdmin):
         "closing_time",
         "created_at",
         "updated_at",
+        "is_open",
     )
+    list_select_related = ["user"]

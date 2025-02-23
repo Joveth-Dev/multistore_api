@@ -1,8 +1,11 @@
+from datetime import datetime
+
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.validators import MinLengthValidator
 from django.db import models
 
-from .validators import validate_mobile_number
+from .validators import validate_file_size, validate_mobile_number
 
 
 class Address(models.Model):
@@ -19,10 +22,13 @@ class Address(models.Model):
 
 
 class Store(models.Model):
+    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
     address = models.OneToOneField(Address, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     image = models.ImageField(
-        upload_to="store/images", default="store/images/default.jpg"
+        upload_to="store/images",
+        default="store/images/default.jpg",
+        validators=[validate_file_size],
     )
     mobile_number = models.CharField(
         max_length=11, validators=[MinLengthValidator(11), validate_mobile_number]
@@ -34,12 +40,27 @@ class Store(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return f"{self.name} - {self.address.city}"
+    
+    def delete(self, *args, **kwargs):
+        self.image.delete(save=False)
+        self.address.delete()
+        super().delete(*args, **kwargs)
+
     def clean(self):
         if self.opening_time == self.closing_time:
             raise ValidationError("Opening time and closing time cannot be the same.")
+        
+    @property
+    def is_open(self):
+        """Check if the store is currently open based on the opening and closing time."""
+        now = datetime.now().time()
 
-    def __str__(self):
-        return f"{self.name} - {self.address.city}"
+        if self.opening_time < self.closing_time:
+            return self.opening_time <= now < self.closing_time  # Regular case (same day)
+        else:
+            return now >= self.opening_time or now < self.closing_time  # Overnight case (e.g., 10 PM to 6 AM)
 
     class Meta:
         ordering = ["-updated_at", "-created_at"]
