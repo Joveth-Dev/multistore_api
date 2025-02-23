@@ -20,13 +20,10 @@ class UserCreateSerializer(BaseUserCreateSerializer):
 
 
 class UserSerializer(UserCreateSerializer):
+    groups = serializers.SlugRelatedField(many=True, read_only=True, slug_field="name")
+
     class Meta(UserCreateSerializer.Meta):
         fields = tuple(
             field for field in UserCreateSerializer.Meta.fields if field != "password"
-        )
-        read_only_fields = ["email"]
-
-    def validate(self, attrs):
-        """By default, each request to this serializer the user's password is
-        expected and validated so we override that here for easy user update"""
-        return attrs
+        ) + ("groups",)
+        read_only_fields = ["email", "groups"]
