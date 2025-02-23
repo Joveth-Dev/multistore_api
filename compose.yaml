@@ -19,9 +19,11 @@ services:
           path: requirements.txt
         - action: rebuild
           path: multistore_api/settings.py
-        - action: sync
+        - action: sync+exec
           path: .
           target: /usr/src/app
+          exec:
+            command: python manage.py migrate
     depends_on:
       postgres:
         condition: service_healthy
