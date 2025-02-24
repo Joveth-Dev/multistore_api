@@ -20,6 +20,7 @@ class StoreSerializer(serializers.ModelSerializer):
             "id",
             "user",
             "name",
+            "email",
             "image",
             "mobile_number",
             "delivery_fee",
@@ -34,10 +35,17 @@ class StoreSerializer(serializers.ModelSerializer):
         read_only_fields = ["user", "is_open"]
 
     def validate(self, attrs):
-        if attrs.get("opening_time") == attrs.get("closing_time"):
-            raise ValidationError(
-                {"operating_hours": "Opening time and closing time cannot be the same."}
-            )
+        opening_time = attrs.get("opening_time")
+        closing_time = attrs.get("closing_time")
+
+        if opening_time is not None and closing_time is not None:
+            if opening_time == closing_time:
+                raise ValidationError(
+                    {
+                        "operating_hours": "Opening time and closing time cannot be the same."
+                    }
+                )
+
         return super().validate(attrs)
 
     def create(self, validated_data):
@@ -50,6 +58,20 @@ class StoreSerializer(serializers.ModelSerializer):
         validated_data["address"] = new_address
         return super().create(validated_data)
 
+    def update(self, instance: Store, validated_data):
+        address_data = validated_data.pop("address", None)
+
+        if address_data:
+            address_instance = instance.address
+            for attr, value in address_data.items():
+                setattr(address_instance, attr, value)
+            address_instance.save()
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -57,16 +79,25 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ["store"]
 
-    def validate(self, attrs):
-        attrs = super().validate(attrs)
+    def create(self, validated_data):
         user = self.context["user"]
         store = Store.objects.get(user=user)
-        if Category.objects.filter(store=store, name=attrs["name"]).exists():
+        self.validate_user_has_store(user)
+        self.validate_unique_name(store, validated_data.get("name"))
+        validated_data["store"] = store
+        return super().create(validated_data)
+
+    def validate_user_has_store(self, user):
+        if not Store.objects.filter(user=user).exists():
             raise ValidationError(
-                {"name": "A category with that name already exists for this store."}
+                {"store": "You must be a store owner to be able to create a category"}
             )
-        attrs["store"] = store
-        return attrs
+
+    def validate_unique_name(self, store: Store, category_name: str):
+        if Category.objects.filter(store=store, name=category_name).exists():
+            raise ValidationError(
+                {"name": f"A category with that name already exists for {store.name}."}
+            )
 
 
 # class ProductSerializer(serializers.ModelSerializer):
