@@ -13,14 +13,13 @@ class StoreAdmin(admin.ModelAdmin):
     list_display = (
         "user",
         "name",
+        "email",
         "mobile_number",
-        "delivery_fee",
-        "opening_time",
-        "closing_time",
+        "is_open",
         "created_at",
         "updated_at",
-        "is_open",
     )
+    search_fields = ["user__email", "name", "email"]
     list_select_related = ["user"]
 
 

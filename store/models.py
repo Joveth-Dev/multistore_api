@@ -25,6 +25,7 @@ class Store(models.Model):
     user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE)
     address = models.OneToOneField(Address, on_delete=models.CASCADE)
     name = models.CharField(max_length=255, unique=True)
+    email = models.EmailField(unique=True)
     image = models.ImageField(
         upload_to="store/store/images",
         default="store/store/images/default.jpg",
@@ -44,7 +45,8 @@ class Store(models.Model):
         return f"{self.name} - {self.address.city}"
 
     def delete(self, *args, **kwargs):
-        self.image.delete(save=False)
+        if self.image and self.image.name != "store/store/images/default.jpg":
+            self.image.delete(save=False)
         self.address.delete()
         super().delete(*args, **kwargs)
 
@@ -95,7 +97,7 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=8, decimal_places=2)
     image = models.ImageField(
         upload_to="store/product/images",
-        default="store/product/default.jpg",
+        default="store/product/images/default.jpg",
         validators=[validate_file_size],
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -103,6 +105,11 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
+
+    def delete(self, *args, **kwargs):
+        if self.image and self.image.name != "store/product/images/default.jpg":
+            self.image.delete(save=False)
+        super().delete(*args, **kwargs)
 
     class Meta:
         ordering = ["-updated_at", "-created_at"]
