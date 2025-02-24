@@ -35,5 +35,15 @@ class UserAdmin(BaseUserAdmin):
         ),
         (_("Important dates"), {"fields": ("last_login", "date_joined")}),
     )
+    add_fieldsets = (
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": ("email", "usable_password", "password1", "password2"),
+            },
+        ),
+    )
     list_display = ("email", "first_name", "last_name", "is_active", "is_staff")
     ordering = ["-date_joined"]
+    search_fields = ("first_name", "last_name", "email")
