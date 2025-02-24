@@ -1,27 +1,24 @@
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.request import Request
+from rest_framework.permissions import BasePermission
 
 
-class IsStoreOwnerMember(IsAuthenticated):
-    def has_permission(self, request: Request, view):
-        user = request.user
-        if not super().has_permission(request, view):
+class GenericModelCRUDPermission(BasePermission):
+    def has_permission(self, request, view):
+        if not hasattr(view, "queryset"):
             return False
-        if request.method == "POST":
-            # Creating a new Category => needs 'add_category'
-            return user.has_perm("store.add_category")
-
-        if request.method in ["PUT", "PATCH"]:
-            # Updating a Category => needs 'change_category'
-            return user.has_perm("store.change_category")
-
-        if request.method == "DELETE":
-            # Deleting a Category => needs 'delete_category'
-            return user.has_perm("store.delete_category")
+        app_label = view.queryset.model._meta.app_label
+        model_name = view.queryset.model._meta.model_name
+        user = request.user
 
         if request.method == "GET":
-            # Reading a Category => needs 'view_category'
-            # or we can skip if you want everyone to see
-            return user.has_perm("store.view_category")
+            return user.has_perm(f"{app_label}.view_{model_name}")
+        if request.method == "POST":
+            return user.has_perm(f"{app_label}.add_{model_name}")
+        if request.method in ["PUT", "PATCH"]:
+            return user.has_perm(f"{app_label}.change_{model_name}")
+        if request.method == "DELETE":
+            return user.has_perm(f"{app_label}.delete_{model_name}")
 
-        return False
+
+class IsStoreOwner(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return bool(obj.user == request.user)
