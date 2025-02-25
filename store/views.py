@@ -1,6 +1,10 @@
+from django.db.models import Count
 from django.db.models.query import Prefetch
+from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAdminUser
+from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from .models import Category, Store
@@ -9,7 +13,12 @@ from .serializers import CategorySerializer, StoreSerializer
 
 
 class StoreViewSet(ModelViewSet):
-    queryset = Store.objects.select_related("user", "address")
+    queryset = (
+        Store.objects.annotate(product_count=Count("product"))
+        .filter(product_count__gt=0)
+        .prefetch_related("user__groups")
+        .select_related("user", "address")
+    )
     serializer_class = StoreSerializer
 
     def get_permissions(self):
@@ -23,6 +32,22 @@ class StoreViewSet(ModelViewSet):
         if self.action == "create":
             return {"user": self.request.user}
         return super().get_serializer_context()
+
+    def get_user_groups(self):
+        user = self.request.user
+        user_groups = getattr(user, "_cached_groups", None)
+        if user_groups is None:
+            user_groups = set(user.groups.values_list("name", flat=True))
+            setattr(user, "_cached_groups", user_groups)
+        return user_groups
+
+    @action(detail=False, methods=["GET"])
+    def my_store(self, request):
+        user_groups = self.get_user_groups()
+        if "Store Owner" in user_groups:
+            store = Store.objects.get(user=request.user)
+            return Response(self.get_serializer(store).data, status=status.HTTP_200_OK)
+        raise PermissionDenied()
 
 
 class CategoryViewSet(ModelViewSet):

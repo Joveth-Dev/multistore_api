@@ -29,6 +29,7 @@ class StoreSerializer(serializers.ModelSerializer):
             "closing_time",
             "address",
             "is_open",
+            "is_live",
             "created_at",
             "updated_at",
         )
