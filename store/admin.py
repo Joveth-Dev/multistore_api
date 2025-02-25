@@ -15,10 +15,12 @@ class StoreAdmin(admin.ModelAdmin):
         "name",
         "email",
         "mobile_number",
+        "is_live",
         "is_open",
         "created_at",
         "updated_at",
     )
+    list_filter = ["is_live"]
     search_fields = ["user__email", "name", "email"]
     list_select_related = ["user"]
 

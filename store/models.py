@@ -38,6 +38,7 @@ class Store(models.Model):
     description = models.TextField()
     opening_time = models.TimeField()
     closing_time = models.TimeField()
+    is_live = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
