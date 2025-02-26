@@ -69,6 +69,11 @@ class Store(models.Model):
                 now >= self.opening_time or now < self.closing_time
             )  # Overnight case (e.g., 10 PM to 6 AM)
 
+    def get_display_name(self):
+        if self.address and hasattr(self.address, "city"):
+            return f"{self.name} - {self.address.city}"
+        return str(self)
+
     class Meta:
         ordering = ["-updated_at", "-created_at"]
 

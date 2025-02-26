@@ -73,6 +73,11 @@ class StoreSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+    def to_representation(self, instance: Store):
+        data = super().to_representation(instance)
+        data["display_name"] = instance.get_display_name()
+        return data
+
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
