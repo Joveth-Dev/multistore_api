@@ -13,13 +13,21 @@ from .serializers import CategorySerializer, StoreSerializer
 
 
 class StoreViewSet(ModelViewSet):
-    queryset = (
-        Store.objects.annotate(product_count=Count("product"))
-        .filter(product_count__gt=0)
-        .prefetch_related("user__groups")
-        .select_related("user", "address")
-    )
     serializer_class = StoreSerializer
+
+    def get_queryset(self):
+        if self.action in ["partial_update", "update"]:
+            user_groups = self.get_user_groups()
+            if "Store Owner" in user_groups:
+                queryset = Store.objects.filter(user=self.request.user)
+        else:
+            queryset = (
+                Store.objects.annotate(product_count=Count("product"))
+                .filter(product_count__gt=0)
+                .prefetch_related("user__groups")
+                .select_related("user", "address")
+            )
+        return queryset
 
     def get_permissions(self):
         if self.action in ["list", "retrieve", "create"]:
