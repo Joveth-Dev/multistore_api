@@ -1,3 +1,4 @@
+from django.conf import settings
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
@@ -80,40 +81,61 @@ class StoreSerializer(serializers.ModelSerializer):
 
 
 class CategorySerializer(serializers.ModelSerializer):
+    store = serializers.StringRelatedField()
+
     class Meta:
         model = Category
         fields = "__all__"
         read_only_fields = ["store"]
 
-    def create(self, validated_data):
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
         user = self.context["user"]
         store = Store.objects.get(user=user)
-        self.validate_user_has_store(user)
-        self.validate_unique_name(store, validated_data.get("name"))
-        validated_data["store"] = store
-        return super().create(validated_data)
-
-    def validate_user_has_store(self, user):
-        if not Store.objects.filter(user=user).exists():
+        if Category.objects.filter(store=store, name=attrs.get("name")).exists():
             raise ValidationError(
-                {"store": "You must be a store owner to be able to create a category"}
+                {"name": "A category with that name already exists in your store"}
             )
+        attrs["store"] = store
+        return attrs
 
-    def validate_unique_name(self, store: Store, category_name: str):
-        if Category.objects.filter(store=store, name=category_name).exists():
+
+class ListAndRetrieveProductSerializer(serializers.ModelSerializer):
+    store = serializers.StringRelatedField()
+    category = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = "__all__"
+
+    def get_category(self, instance: Product):
+        return instance.category.name
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["image"] = f"{settings.BASE_URL}{data.get('image')}"
+        return data
+
+
+class ProductSerializer(serializers.ModelSerializer):
+    store = serializers.StringRelatedField()
+
+    class Meta:
+        model = Product
+        fields = "__all__"
+        read_only_fields = ["store"]
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        user = self.context["user"]
+        store = Store.objects.get(user=user)
+        product_name = attrs.get("name")
+        existing_products = Product.objects.filter(store=store, name=product_name)
+        if self.instance:
+            existing_products = existing_products.exclude(pk=self.instance.pk)
+        if existing_products.exists():
             raise ValidationError(
-                {"name": f"A category with that name already exists for {store.name}."}
+                {"name": "A product with that name already exists in your store"}
             )
-
-
-# class ProductSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Product
-#         fields = "__all__"
-#         read_only_fields = ["store"]
-
-#     def create(self, validated_data):
-#         user = self.context["user"]
-#         store = Store.objects.get(user=user)
-#         validated_data["store"] = store
-#         return super().create(validated_data)
+        attrs["store"] = store
+        return attrs
