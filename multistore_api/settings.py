@@ -33,8 +33,8 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
-
 CORS_ALLOWED_ORIGINS = ["http://localhost:3000"]
+BASE_URL = os.getenv("BASE_URL")
 
 
 # Application definition
