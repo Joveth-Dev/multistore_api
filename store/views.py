@@ -60,6 +60,7 @@ class StoreViewSet(ModelViewSet):
 
 class CategoryViewSet(ModelViewSet):
     serializer_class = CategorySerializer
+    pagination_class = None
 
     def get_queryset(self):
         user = self.request.user
