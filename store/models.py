@@ -85,13 +85,15 @@ class Category(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.name
+        return f"{self.name} - {self.store.name}"
 
     class Meta:
         verbose_name_plural = "Categories"
         ordering = ["-updated_at", "-created_at"]
         constraints = [
-            models.UniqueConstraint(fields=["store", "name"], name="unique_store_name")
+            models.UniqueConstraint(
+                fields=["store", "name"], name="unique_store_category"
+            )
         ]
 
 
@@ -106,6 +108,7 @@ class Product(models.Model):
         default="store/product/images/default.jpg",
         validators=[validate_file_size],
     )
+    is_available = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -119,3 +122,8 @@ class Product(models.Model):
 
     class Meta:
         ordering = ["-updated_at", "-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["store", "name"], name="unique_store_product"
+            )
+        ]
