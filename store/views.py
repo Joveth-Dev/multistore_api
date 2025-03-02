@@ -19,14 +19,16 @@ from .serializers import (
 
 class StoreViewSet(ModelViewSet):
     serializer_class = StoreSerializer
+    pagination_class = None
 
     def get_queryset(self):
-        queryset = (
-            Store.objects.annotate(product_count=Count("product"))
-            .filter(product_count__gt=0)
-            .prefetch_related("user__groups")
-            .select_related("user", "address")
+        queryset = Store.objects.prefetch_related("user__groups").select_related(
+            "user", "address"
         )
+        if self.action in ["list", "retrieve"] and not self.request.user.is_staff:
+            queryset = queryset.annotate(product_count=Count("product")).filter(
+                product_count__gt=0, is_live=True
+            )
         return queryset
 
     def get_permissions(self):
@@ -104,6 +106,7 @@ class ProductViewSet(ModelViewSet):
         Prefetch("store__user__groups")
     ).select_related("store__user", "store__address", "category")
     serializer_class = ProductSerializer
+    filterset_fields = ["store"]
     pagination_class = None
 
     def get_permissions(self):

@@ -100,16 +100,19 @@ class CategorySerializer(serializers.ModelSerializer):
         return attrs
 
 
+class ProductCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ["id", "name"]
+
+
 class ListAndRetrieveProductSerializer(serializers.ModelSerializer):
     store = serializers.StringRelatedField()
-    category = serializers.SerializerMethodField()
+    category = ProductCategorySerializer()
 
     class Meta:
         model = Product
         fields = "__all__"
-
-    def get_category(self, instance: Product):
-        return instance.category.name
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
