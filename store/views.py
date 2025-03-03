@@ -29,6 +29,8 @@ class StoreViewSet(ModelViewSet):
             queryset = queryset.annotate(product_count=Count("product")).filter(
                 product_count__gt=0, is_live=True
             )
+            if self.request.user.is_authenticated: # store owners should not be able to see their store in store list
+                queryset = queryset.exclude(user=self.request.user)
         return queryset
 
     def get_permissions(self):
