@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models import Count
 from django.db.models.query import Prefetch
 from rest_framework import status
@@ -200,19 +201,37 @@ class CartItemViewSet(ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        cartitem = CartItem.objects.filter(
-            cart=Cart.objects.get(user=self.request.user),
-            product=serializer.validated_data.get("product"),
-        ).first()
-        if cartitem:
-            cartitem.quantity += serializer.validated_data.get("quantity")
-            cartitem.save()
-        else:
-            cartitem = serializer.save()
+        user_cart = Cart.objects.get(user=self.request.user)
+        new_product = serializer.validated_data.get("product")
+        new_store = new_product.store  # Assuming the Product model has a store field
+
+        # Fetch existing cart items
+        existing_cart_items = CartItem.objects.filter(cart=user_cart)
+
+        if existing_cart_items.exists():
+            existing_store = (
+                existing_cart_items.first().product.store
+            )  # Get store of existing items
+
+            if existing_store != new_store:
+                # If the new product belongs to a different store, clear the cart
+                existing_cart_items.delete()
+
+        with transaction.atomic():
+            cartitem, created = CartItem.objects.get_or_create(
+                cart=user_cart,
+                product=new_product,
+                defaults={"quantity": serializer.validated_data.get("quantity")},
+            )
+            if not created:
+                cartitem.quantity += serializer.validated_data.get("quantity")
+                cartitem.save()
+
         response_serializer = ListAndRetrieveCartItemSerializer(
             cartitem, context=self.get_serializer_context()
         )
         headers = self.get_success_headers(response_serializer.data)
+
         return Response(
             response_serializer.data, status=status.HTTP_201_CREATED, headers=headers
         )

@@ -47,6 +47,16 @@ class StoreSerializer(serializers.ModelSerializer):
                         "operating_hours": "Opening time and closing time cannot be the same."
                     }
                 )
+        is_live = attrs.get("is_live", None)
+
+        if is_live:
+            store = self.instance
+            if store and not store.product_set.exists():
+                raise ValidationError(
+                    {
+                        "is_live": "A store must have at least one product before going live."
+                    }
+                )
 
         return super().validate(attrs)
 
@@ -144,10 +154,18 @@ class ProductSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class CartItemStoreSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Store
+        fields = ["id", "name"]
+
+
 class CartItemProductSerializer(serializers.ModelSerializer):
+    store = CartItemStoreSerializer()
+
     class Meta:
         model = Product
-        fields = ["id", "name", "price", "image"]
+        fields = ["id", "name", "price", "image", "store"]
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
