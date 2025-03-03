@@ -18,6 +18,7 @@ class UserAdmin(BaseUserAdmin):
                     "last_name",
                     "birth_date",
                     "address",
+                    "mobile_number",
                 )
             },
         ),
@@ -40,7 +41,19 @@ class UserAdmin(BaseUserAdmin):
             None,
             {
                 "classes": ("wide",),
-                "fields": ("email", "usable_password", "password1", "password2"),
+                "fields": ("email", "usable_password", "password1", "password2", ),
+            },
+        ),
+        (
+            _("Personal info"),
+            {
+                "fields": (
+                    "first_name",
+                    "last_name",
+                    "birth_date",
+                    "address",
+                    "mobile_number",
+                )
             },
         ),
     )

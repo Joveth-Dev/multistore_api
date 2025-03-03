@@ -16,6 +16,7 @@ class UserCreateSerializer(BaseUserCreateSerializer):
             "last_name",
             "birth_date",
             "address",
+            "mobile_number",
         )
 
 
