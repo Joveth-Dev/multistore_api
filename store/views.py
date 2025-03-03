@@ -1,23 +1,30 @@
+from decimal import Decimal
+
 from django.db import transaction
 from django.db.models import Count
 from django.db.models.query import Prefetch
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.mixins import CreateModelMixin
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
+from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
-from .models import Cart, CartItem, Category, Product, Store
+from .models import Cart, CartItem, Category, Order, OrderItem, Product, Store
 from .permissions import IsCartItemOwner, IsCategoryOwner, IsProductOwner, IsStoreOwner
 from .serializers import (
     CartItemSerializer,
     CategorySerializer,
+    CreateOrderSerializer,
     ListAndRetrieveCartItemSerializer,
     ListAndRetrieveProductSerializer,
+    OrderSerializer,
     ProductSerializer,
     StoreSerializer,
     UpdateCartItemSerializer,
+    UpdateOrderStatusSerializer,
 )
 
 
@@ -42,12 +49,12 @@ class StoreViewSet(ModelViewSet):
         user_groups = self.get_user_groups()
         if self.action == "my_store":
             if "Store Owner" not in user_groups:
-                raise PermissionDenied("You must own a store!")
+                raise PermissionDenied({"store": "You must own a store!"})
         if self.action == "create":
             if self.request.user.is_staff:
-                raise PermissionDenied("Admins cannot create a store!")
+                raise PermissionDenied({"store": "Admins cannot create a store!"})
             if "Store Owner" in user_groups:
-                raise PermissionDenied("You're already a store owner!")
+                raise PermissionDenied({"store": "You're already a store owner!"})
             self.permission_classes = [IsAuthenticated]
         if self.action in ["list", "retrieve"]:
             self.permission_classes = [AllowAny]
@@ -90,7 +97,7 @@ class CategoryViewSet(ModelViewSet):
         if self.action == "create":
             user_groups = self.get_user_groups()
             if "Store Owner" not in user_groups:
-                raise PermissionDenied()
+                raise PermissionDenied({"store": "You must own a store!"})
         if self.action in ["partial_update", "update", "destroy"]:
             self.permission_classes = [IsCategoryOwner | IsAdminUser]
         return super().get_permissions()
@@ -118,7 +125,7 @@ class ProductViewSet(ModelViewSet):
         if self.action in ["create", "my_products"]:
             user_groups = self.get_user_groups()
             if "Store Owner" not in user_groups:
-                raise PermissionDenied()
+                raise PermissionDenied({"store": "You must own a store!"})
         if self.action in ["list", "retrieve"]:
             self.permission_classes = [AllowAny]
         if self.action in ["partial_update", "update", "destroy"]:
@@ -256,3 +263,96 @@ class CartItemViewSet(ModelViewSet):
 
     def get_serializer_context(self):
         return {"user": self.request.user}
+
+
+class OrderViewSet(GenericViewSet, CreateModelMixin):
+    queryset = Order.objects.select_related("cart", "store__address").prefetch_related(
+        "items__product"
+    )
+    serializer_class = OrderSerializer
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return CreateOrderSerializer
+        return super().get_serializer_class()
+
+    def create(self, request, *args, **kwargs):
+        cart = self.request.user.cart
+        cart_items = CartItem.objects.filter(cart=cart)
+        if not cart_items.exists():
+            raise ValidationError({"cart": "Your cart does not contain any items."})
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        store = serializer.validated_data.get("store")
+        total_price = (
+            sum(item.product.price * item.quantity for item in cart_items)
+            + store.delivery_fee
+        )
+        order = Order.objects.create(
+            store=store,
+            cart=cart,
+            total_price=total_price,
+            status=Order.NEW,
+        )
+
+        # Create OrderItem instances from CartItems
+        order_items = [
+            OrderItem(
+                order=order,
+                product=item.product,
+                quantity=item.quantity,
+                price_per_item=Decimal(item.product.price * item.quantity),
+            )
+            for item in cart_items
+        ]
+        OrderItem.objects.bulk_create(order_items)
+
+        # Delete all CartItems from the cart
+        cart_items.delete()
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            OrderSerializer(order).data, status=status.HTTP_201_CREATED, headers=headers
+        )
+
+    def get_user_groups(self):
+        user = self.request.user
+        user_groups = getattr(user, "_cached_groups", None)
+        if user_groups is None:
+            user_groups = set(user.groups.values_list("name", flat=True))
+            setattr(user, "_cached_groups", user_groups)
+        return user_groups
+
+    @action(detail=False, methods=["GET"])
+    def my_orders(self, request: Request):
+        orders = self.get_queryset().filter(cart__user=request.user)
+        return Response(
+            self.get_serializer(orders, many=True).data, status=status.HTTP_200_OK
+        )
+
+    @action(detail=False, methods=["GET"])
+    def my_store_orders(self, request: Request):
+        user_groups = self.get_user_groups()
+        if "Store Owner" not in user_groups:
+            raise PermissionDenied({"store": "You must own a store!"})
+        store = Store.objects.get(user=request.user)
+        orders = self.get_queryset().filter(store=store)
+        return Response(
+            self.get_serializer(orders, many=True).data, status=status.HTTP_200_OK
+        )
+
+    @action(
+        detail=True, methods=["PATCH"], serializer_class=UpdateOrderStatusSerializer
+    )
+    def update_order_status(self, request: Request, pk=None):
+        user_groups = self.get_user_groups()
+        if "Store Owner" not in user_groups:
+            raise PermissionDenied({"store": "You must own a store!"})
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        order = Order.objects.get(pk=pk)
+        order.status = serializer.validated_data["status"]
+        order.save()
+        return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)

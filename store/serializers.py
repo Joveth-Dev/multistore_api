@@ -2,7 +2,7 @@ from django.conf import settings
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from .models import Address, Cart, CartItem, Category, Product, Store
+from .models import Address, Cart, CartItem, Category, Order, OrderItem, Product, Store
 
 
 class CreateAddressSerializer(serializers.ModelSerializer):
@@ -196,3 +196,57 @@ class CartItemSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data["cart"] = Cart.objects.get(user=self.context["user"])
         return super().create(validated_data)
+
+
+class OrderItemProductSerializer(serializers.ModelSerializer):
+    class Meta(CartItemProductSerializer.Meta):
+        fields = ["id", "name", "price"]
+
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    product = OrderItemProductSerializer()
+
+    class Meta:
+        model = OrderItem
+        fields = ["id", "product", "quantity", "price_per_item"]
+
+
+class OrderStoreSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Store
+        fields = ["id", "name", "delivery_fee"]
+
+    def to_representation(self, instance: Store):
+        data = super().to_representation(instance)
+        data["display_name"] = instance.get_display_name()
+        return data
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True)
+    store = OrderStoreSerializer()
+
+    class Meta:
+        model = Order
+        fields = [
+            "id",
+            "store",
+            "status",
+            "total_price",
+            "items",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["total_price", "items", "store"]
+
+
+class CreateOrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = ["store"]
+
+
+class UpdateOrderStatusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = ["status"]
