@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Address, Category, Product, Store
+from .models import Address, Cart, CartItem, Category, Product, Store
 
 
 @admin.register(Address)
@@ -55,3 +55,33 @@ class ProductAdmin(admin.ModelAdmin):
     list_filter = ["is_available", "created_at", "updated_at"]
     list_select_related = ["store__address", "category__store"]
     search_fields = ["store_email", "store__user__email", "name", "category__name"]
+
+
+@admin.register(Cart)
+class CartAdmin(admin.ModelAdmin):
+    list_display = (
+        "user",
+        "created_at",
+        "updated_at",
+    )
+    list_filter = ("created_at", "updated_at")
+    list_select_related = ["user"]
+
+
+@admin.register(CartItem)
+class CartItemAdmin(admin.ModelAdmin):
+    """Admin View for CartItem"""
+
+    list_display = (
+        "cart",
+        "product",
+        "quantity",
+        "created_at",
+        "updated_at",
+    )
+    list_filter = ("created_at", "updated_at")
+    list_select_related = ["cart__user", "product"]
+    search_fields = (
+        "cart__user__email",
+        "product__name",
+    )

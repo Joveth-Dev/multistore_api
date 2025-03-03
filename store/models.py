@@ -1,9 +1,13 @@
-from datetime import datetime
-
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.core.validators import MinLengthValidator
+from django.core.validators import (
+    MaxValueValidator,
+    MinLengthValidator,
+    MinValueValidator,
+)
 from django.db import models
+from django.db.models.functions import Lower
+from django.utils import timezone
 
 from .validators import validate_file_size, validate_mobile_number
 
@@ -23,7 +27,7 @@ class Address(models.Model):
 
 class Store(models.Model):
     user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE)
-    address = models.OneToOneField(Address, on_delete=models.CASCADE)
+    address = models.OneToOneField(Address, on_delete=models.PROTECT)
     name = models.CharField(max_length=255, unique=True)
     email = models.EmailField(unique=True)
     image = models.ImageField(
@@ -58,7 +62,7 @@ class Store(models.Model):
     @property
     def is_open(self):
         """Check if the store is currently open based on the opening and closing time."""
-        now = datetime.now().time()
+        now = timezone.now().time()
 
         if self.opening_time < self.closing_time:
             return (
@@ -92,7 +96,7 @@ class Category(models.Model):
         ordering = ["-updated_at", "-created_at"]
         constraints = [
             models.UniqueConstraint(
-                fields=["store", "name"], name="unique_store_category"
+                Lower("name"), "store", name="unique_store_category_case_insensitive"
             )
         ]
 
@@ -102,7 +106,9 @@ class Product(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     description = models.TextField()
-    price = models.DecimalField(max_digits=8, decimal_places=2)
+    price = models.DecimalField(
+        max_digits=8, decimal_places=2, validators=[MinValueValidator(0.01)]
+    )
     image = models.ImageField(
         upload_to="store/product/images",
         default="store/product/images/default.jpg",
@@ -124,6 +130,36 @@ class Product(models.Model):
         ordering = ["-updated_at", "-created_at"]
         constraints = [
             models.UniqueConstraint(
-                fields=["store", "name"], name="unique_store_product"
+                Lower("name"), "store", name="unique_store_product_case_insensitive"
             )
         ]
+
+
+class Cart(models.Model):
+    user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{str(self.user)}'s Cart"
+
+    class Meta:
+        ordering = ["-updated_at", "-created_at"]
+
+
+class CartItem(models.Model):
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE)
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, limit_choices_to={"is_available": True}
+    )
+    quantity = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(99)]
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.product.name} - {self.quantity}"
+
+    class Meta:
+        ordering = ["-updated_at", "-created_at"]
