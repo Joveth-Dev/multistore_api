@@ -1,8 +1,18 @@
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
-from .models import Store
+from .models import Cart, Store
+
+
+@receiver(post_save, sender=get_user_model())
+def create_cart_for_new_user(sender, instance, created, **kwargs):
+    """
+    Create a Cart for newly created user.
+    """
+    if created:
+        Cart.objects.create(user=instance)
 
 
 @receiver(post_save, sender=Store)
