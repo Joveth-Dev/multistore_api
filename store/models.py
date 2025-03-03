@@ -184,7 +184,7 @@ class Order(models.Model):
         ("delivered", "Delivered"),
         ("canceled", "Canceled"),
     ]
-
+    store = models.ForeignKey(Store, on_delete=models.PROTECT)
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=NEW)
     total_price = models.DecimalField(
