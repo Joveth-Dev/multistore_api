@@ -165,3 +165,6 @@ class CartItem(models.Model):
 
     class Meta:
         ordering = ["-updated_at", "-created_at"]
+        constraints = [
+            models.UniqueConstraint("cart", "product", name="unique_cart_product")
+        ]
