@@ -92,7 +92,7 @@ class OrderAdmin(admin.ModelAdmin):
     '''Admin View for Order'''
 
     list_display = ('store', 'cart', 'status', 'total_price', 'created_at', 'updated_at', )
-    list_filter = ('cart__user', 'created_at', 'updated_at', 'status')
+    list_filter = ('created_at', 'updated_at', 'status')
     list_select_related = ["cart", "cart__user", "store", "store__address"]
     search_fields = ('cart__user__email', 'store__name')
     

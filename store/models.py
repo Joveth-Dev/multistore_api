@@ -168,21 +168,22 @@ class CartItem(models.Model):
         constraints = [
             models.UniqueConstraint("cart", "product", name="unique_cart_product")
         ]
-        
+
 
 class Order(models.Model):
-    NEW = 'new'
-    ACCEPTED = 'accepted'
-    PREPARING_ORDER = 'preparing_order'
-    OUT_FOR_DELIVERY = 'out_for_delivery'
-    COMPLETED = 'completed'
-    REJECTED = 'rejected'
+    NEW = "New"
+    ACCEPTED = "Accepted"
+    PREPARING_ORDER = "Preparing Order"
+    OUT_FOR_DELIVERY = "Out For Delivery"
+    COMPLETED = "Completed"
+    REJECTED = "Rejected"
     STATUS_CHOICES = [
-        ("pending", "Pending"),
-        ("processing", "Processing"),
-        ("shipped", "Shipped"),
-        ("delivered", "Delivered"),
-        ("canceled", "Canceled"),
+        (NEW, "New"),
+        (ACCEPTED, "Accepted"),
+        (PREPARING_ORDER, "Preparing Order"),
+        (OUT_FOR_DELIVERY, "Out For Delivery"),
+        (COMPLETED, "Completed"),
+        (REJECTED, "Rejected"),
     ]
     store = models.ForeignKey(Store, on_delete=models.PROTECT)
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE)
