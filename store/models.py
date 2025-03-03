@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.validators import (
@@ -107,7 +109,7 @@ class Product(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField()
     price = models.DecimalField(
-        max_digits=8, decimal_places=2, validators=[MinValueValidator(0.01)]
+        max_digits=8, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))]
     )
     image = models.ImageField(
         upload_to="store/product/images",
