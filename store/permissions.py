@@ -1,7 +1,7 @@
 from rest_framework.permissions import BasePermission
 from rest_framework.request import Request
 
-from .models import Category, Product, Store
+from .models import CartItem, Category, Product, Store
 
 
 class GenericModelCRUDPermission(BasePermission):
@@ -35,3 +35,7 @@ class IsCategoryOwner(BasePermission):
 class IsProductOwner(BasePermission):
     def has_object_permission(self, request: Request, view, obj: Product):
         return bool(obj.store.user == request.user)
+
+class IsCartItemOwner(BasePermission):
+    def has_object_permission(self, request: Request, view, obj: CartItem):
+        return bool(obj.cart.user == request.user)

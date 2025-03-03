@@ -2,7 +2,7 @@ from django.conf import settings
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from .models import Address, Category, Product, Store
+from .models import Address, Cart, CartItem, Category, Product, Store
 
 
 class CreateAddressSerializer(serializers.ModelSerializer):
@@ -142,3 +142,39 @@ class ProductSerializer(serializers.ModelSerializer):
             )
         attrs["store"] = store
         return attrs
+
+
+class CartItemProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ["id", "name", "price", "image"]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["image"] = f"{settings.BASE_URL}{data.get('image')}"
+        return data
+
+
+class ListAndRetrieveCartItemSerializer(serializers.ModelSerializer):
+    product = CartItemProductSerializer()
+
+    class Meta:
+        model = CartItem
+        fields = "__all__"
+
+
+class UpdateCartItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CartItem
+        fields = ["quantity"]
+
+
+class CartItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CartItem
+        fields = "__all__"
+        read_only_fields = ["cart"]
+
+    def create(self, validated_data):
+        validated_data["cart"] = Cart.objects.get(user=self.context["user"])
+        return super().create(validated_data)

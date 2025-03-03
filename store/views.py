@@ -7,19 +7,21 @@ from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from .models import Category, Product, Store
-from .permissions import IsCategoryOwner, IsProductOwner, IsStoreOwner
+from .models import Cart, CartItem, Category, Product, Store
+from .permissions import IsCartItemOwner, IsCategoryOwner, IsProductOwner, IsStoreOwner
 from .serializers import (
+    CartItemSerializer,
     CategorySerializer,
+    ListAndRetrieveCartItemSerializer,
     ListAndRetrieveProductSerializer,
     ProductSerializer,
     StoreSerializer,
+    UpdateCartItemSerializer,
 )
 
 
 class StoreViewSet(ModelViewSet):
     serializer_class = StoreSerializer
-    pagination_class = None
 
     def get_queryset(self):
         queryset = Store.objects.prefetch_related("user__groups").select_related(
@@ -29,7 +31,9 @@ class StoreViewSet(ModelViewSet):
             queryset = queryset.annotate(product_count=Count("product")).filter(
                 product_count__gt=0, is_live=True
             )
-            if self.request.user.is_authenticated: # store owners should not be able to see their store in store list
+            if (
+                self.request.user.is_authenticated
+            ):  # store owners should not be able to see their store in store list
                 queryset = queryset.exclude(user=self.request.user)
         return queryset
 
@@ -71,7 +75,6 @@ class StoreViewSet(ModelViewSet):
 
 class CategoryViewSet(ModelViewSet):
     serializer_class = CategorySerializer
-    pagination_class = None
 
     def get_queryset(self):
         user = self.request.user
@@ -109,7 +112,6 @@ class ProductViewSet(ModelViewSet):
     ).select_related("store__user", "store__address", "category")
     serializer_class = ProductSerializer
     filterset_fields = ["store"]
-    pagination_class = None
 
     def get_permissions(self):
         if self.action in ["create", "my_products"]:
@@ -151,7 +153,6 @@ class ProductViewSet(ModelViewSet):
             # forcibly invalidate the prefetch cache on the instance.
             instance._prefetched_objects_cache = {}
 
-        # Serialize again using ListAndRetrieveProductSerializer for the response
         response_serializer = ListAndRetrieveProductSerializer(
             instance, context=self.get_serializer_context()
         )
@@ -175,3 +176,64 @@ class ProductViewSet(ModelViewSet):
         return Response(
             self.get_serializer(products, many=True).data, status=status.HTTP_200_OK
         )
+
+
+class CartItemViewSet(ModelViewSet):
+    serializer_class = CartItemSerializer
+    permission_classes = [IsCartItemOwner]
+
+    def get_queryset(self):
+        queryset = CartItem.objects.prefetch_related("cart__user").filter(
+            cart__user=self.request.user
+        )
+        return queryset.order_by("-created_at")
+
+    def get_serializer_class(self):
+        if self.action in ["list", "retrieve"]:
+            return ListAndRetrieveCartItemSerializer
+        if self.action in ["partial_update", "update"]:
+            return UpdateCartItemSerializer
+        else:
+            return CartItemSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        cartitem = CartItem.objects.filter(
+            cart=Cart.objects.get(user=self.request.user),
+            product=serializer.validated_data.get("product"),
+        ).first()
+        if cartitem:
+            cartitem.quantity += serializer.validated_data.get("quantity")
+            cartitem.save()
+        else:
+            cartitem = serializer.save()
+        response_serializer = ListAndRetrieveCartItemSerializer(
+            cartitem, context=self.get_serializer_context()
+        )
+        headers = self.get_success_headers(response_serializer.data)
+        return Response(
+            response_serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        )
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        if getattr(instance, "_prefetched_objects_cache", None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            instance._prefetched_objects_cache = {}
+
+        response_serializer = ListAndRetrieveCartItemSerializer(
+            instance, context=self.get_serializer_context()
+        )
+
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+    def get_serializer_context(self):
+        return {"user": self.request.user}
