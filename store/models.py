@@ -161,10 +161,55 @@ class CartItem(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.product.name} - {self.quantity}"
+        return f"{self.product.name} - {self.quantity} pcs"
 
     class Meta:
         ordering = ["-updated_at", "-created_at"]
         constraints = [
             models.UniqueConstraint("cart", "product", name="unique_cart_product")
         ]
+        
+
+class Order(models.Model):
+    NEW = 'new'
+    ACCEPTED = 'accepted'
+    PREPARING_ORDER = 'preparing_order'
+    OUT_FOR_DELIVERY = 'out_for_delivery'
+    COMPLETED = 'completed'
+    REJECTED = 'rejected'
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("processing", "Processing"),
+        ("shipped", "Shipped"),
+        ("delivered", "Delivered"),
+        ("canceled", "Canceled"),
+    ]
+
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=NEW)
+    total_price = models.DecimalField(
+        max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))]
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Order {self.pk} - {self.cart.user} - {self.status}"
+
+    class Meta:
+        ordering = ["-updated_at", "-created_at"]
+
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    quantity = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(99)]
+    )
+    price_per_item = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.product.name} - {self.quantity} pcs"
+
+    class Meta:
+        ordering = ["order"]
