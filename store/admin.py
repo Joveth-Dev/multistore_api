@@ -1,6 +1,16 @@
 from django.contrib import admin
 
-from .models import Address, Cart, CartItem, Category, Order, OrderItem, Product, Store
+from .models import (
+    Address,
+    Cart,
+    CartItem,
+    Category,
+    Feedback,
+    Order,
+    OrderItem,
+    Product,
+    Store,
+)
 
 
 @admin.register(Address)
@@ -89,19 +99,48 @@ class CartItemAdmin(admin.ModelAdmin):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    '''Admin View for Order'''
+    """Admin View for Order"""
 
-    list_display = ('store', 'cart', 'status', 'total_price', 'created_at', 'updated_at', )
-    list_filter = ('created_at', 'updated_at', 'status')
+    list_display = (
+        "store",
+        "cart",
+        "status",
+        "total_price",
+        "created_at",
+        "updated_at",
+    )
+    list_filter = ("created_at", "updated_at", "status")
     list_select_related = ["cart", "cart__user", "store", "store__address"]
-    search_fields = ('cart__user__email', 'store__name')
-    
-    
+    search_fields = ("cart__user__email", "store__name")
+
+
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
-    '''Admin View for OrderItem'''
+    """Admin View for OrderItem"""
 
-    list_display = ('order', 'product', 'quantity', 'price_per_item', )
-    list_filter = ('order__cart__user',)
-    list_select_related = ['order__cart__user']
-    search_fields = ('order__cart__user__email',)
+    list_display = (
+        "order",
+        "product",
+        "quantity",
+        "price_per_item",
+    )
+    list_filter = ("order__cart__user",)
+    list_select_related = ["order__cart__user"]
+    search_fields = ("order__cart__user__email",)
+
+
+@admin.register(Feedback)
+class FeedbackAdmin(admin.ModelAdmin):
+    """Admin View for Feedback"""
+
+    list_display = (
+        "customer",
+        "order",
+        "rating",
+        "description",
+        "created_at",
+        "updated_at",
+    )
+    list_filter = ("rating", "created_at", "updated_at")
+    list_select_related = ["order", "order__cart__user", "customer"]
+    search_fields = ("customer__email", "customer__first_name", "customer__last_name")

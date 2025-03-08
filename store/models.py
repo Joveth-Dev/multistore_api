@@ -9,6 +9,7 @@ from django.core.validators import (
     MinValueValidator,
 )
 from django.db import models
+from django.db.models import Avg
 from django.db.models.functions import Lower
 
 from .validators import validate_file_size, validate_mobile_number
@@ -214,3 +215,25 @@ class OrderItem(models.Model):
 
     class Meta:
         ordering = ["order"]
+
+
+class Feedback(models.Model):
+    customer = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name="feedbacks",
+        limit_choices_to={"status": "Completed"},
+    )
+    rating = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)]
+    )
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return str(self.rating)
+
+    class Meta:
+        ordering = ["-updated_at", "-created_at"]
