@@ -2,7 +2,17 @@ from django.conf import settings
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from .models import Address, Cart, CartItem, Category, Order, OrderItem, Product, Store
+from .models import (
+    Address,
+    Cart,
+    CartItem,
+    Category,
+    Feedback,
+    Order,
+    OrderItem,
+    Product,
+    Store,
+)
 
 
 class CreateAddressSerializer(serializers.ModelSerializer):
@@ -14,6 +24,7 @@ class CreateAddressSerializer(serializers.ModelSerializer):
 class StoreSerializer(serializers.ModelSerializer):
     address = CreateAddressSerializer()
     user = serializers.StringRelatedField()
+    rating = serializers.FloatField(read_only=True)
 
     class Meta:
         model = Store
@@ -33,8 +44,9 @@ class StoreSerializer(serializers.ModelSerializer):
             "is_live",
             "created_at",
             "updated_at",
+            "rating",
         )
-        read_only_fields = ["user", "is_open"]
+        read_only_fields = ["user", "is_open", "rating"]
 
     def validate(self, attrs):
         opening_time = attrs.get("opening_time")
@@ -222,9 +234,18 @@ class OrderStoreSerializer(serializers.ModelSerializer):
         return data
 
 
+class OrderFeedbackSerializer(serializers.ModelSerializer):
+    customer = serializers.StringRelatedField()
+
+    class Meta:
+        model = Feedback
+        fields = ["id", "customer", "rating", "description"]
+
+
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True)
     store = OrderStoreSerializer()
+    feedbacks = OrderFeedbackSerializer(many=True)
 
     class Meta:
         model = Order
@@ -236,12 +257,15 @@ class OrderSerializer(serializers.ModelSerializer):
             "items",
             "created_at",
             "updated_at",
+            "feedbacks",
         ]
-        read_only_fields = ["total_price", "items", "store"]
+        read_only_fields = ["total_price", "items", "store", "feedbacks"]
 
     def to_representation(self, instance: Order):
         data = super().to_representation(instance)
         data["user"] = {"id": instance.cart.user.pk, "name": str(instance.cart.user)}
+        if self.context.get("action") == "my_orders":
+            data["has_submitted_feedback"] = instance.has_submitted_feedback
         return data
 
 
@@ -272,3 +296,14 @@ class CartSerializer(serializers.ModelSerializer):
                 "image"
             ] = f"{settings.BASE_URL}{settings.MEDIA_URL}{store.image}"
         return data
+
+
+class FeedbackSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Feedback
+        fields = "__all__"
+        read_only_fields = ["customer"]
+
+    def create(self, validated_data):
+        validated_data["customer"] = self.context["customer"]
+        return super().create(validated_data)

@@ -1,7 +1,8 @@
 from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Avg, Count, Exists, FloatField, OuterRef, Value
+from django.db.models.functions import Coalesce
 from django.db.models.query import Prefetch
 from rest_framework import status
 from rest_framework.decorators import action
@@ -12,13 +13,14 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
-from .models import Cart, CartItem, Category, Order, OrderItem, Product, Store
+from .models import Cart, CartItem, Category, Feedback, Order, OrderItem, Product, Store
 from .permissions import IsCartItemOwner, IsCategoryOwner, IsProductOwner, IsStoreOwner
 from .serializers import (
     CartItemSerializer,
     CartSerializer,
     CategorySerializer,
     CreateOrderSerializer,
+    FeedbackSerializer,
     ListAndRetrieveCartItemSerializer,
     ListAndRetrieveProductSerializer,
     OrderSerializer,
@@ -36,13 +38,21 @@ class StoreViewSet(ModelViewSet):
         queryset = Store.objects.prefetch_related("user__groups").select_related(
             "user", "address"
         )
+
+        # Annotate rating for all queries
+        queryset = queryset.annotate(
+            rating=Coalesce(
+                Avg("order__feedbacks__rating"),
+                Value(0.0),
+                output_field=FloatField(),
+            )
+        )
+
         if self.action in ["list", "retrieve"] and not self.request.user.is_staff:
             queryset = queryset.annotate(product_count=Count("product")).filter(
                 product_count__gt=0, is_live=True
             )
-            if (
-                self.request.user.is_authenticated
-            ):  # store owners should not be able to see their store in store list
+            if self.request.user.is_authenticated:
                 queryset = queryset.exclude(user=self.request.user)
         return queryset
 
@@ -78,7 +88,11 @@ class StoreViewSet(ModelViewSet):
 
     @action(detail=False, methods=["GET"])
     def my_store(self, request):
-        store = Store.objects.get(user=request.user)
+        store = Store.objects.annotate(
+            rating=Coalesce(
+                Avg("order__feedbacks__rating"), Value(0.0), output_field=FloatField()
+            )
+        ).get(user=request.user)
         return Response(self.get_serializer(store).data, status=status.HTTP_200_OK)
 
 
@@ -190,7 +204,8 @@ class ProductViewSet(ModelViewSet):
 class CartViewSet(GenericViewSet, ListModelMixin):
     queryset = Cart.objects.prefetch_related(
         Prefetch(
-            "cartitem_set", queryset=CartItem.objects.select_related("product__store__address")
+            "cartitem_set",
+            queryset=CartItem.objects.select_related("product__store__address"),
         )
     ).annotate(cart_item_count=Count("cartitem"))
     serializer_class = CartSerializer
@@ -284,13 +299,16 @@ class CartItemViewSet(ModelViewSet):
 class OrderViewSet(GenericViewSet, CreateModelMixin):
     queryset = Order.objects.select_related(
         "cart__user", "store__address"
-    ).prefetch_related("items__product")
+    ).prefetch_related("items__product", "feedbacks__customer")
     serializer_class = OrderSerializer
 
     def get_serializer_class(self):
         if self.action == "create":
             return CreateOrderSerializer
         return super().get_serializer_class()
+
+    def get_serializer_context(self):
+        return {"action": self.action}
 
     def create(self, request, *args, **kwargs):
         cart = self.request.user.cart
@@ -343,7 +361,15 @@ class OrderViewSet(GenericViewSet, CreateModelMixin):
 
     @action(detail=False, methods=["GET"])
     def my_orders(self, request: Request):
-        orders = self.get_queryset().filter(cart__user=request.user)
+        user = request.user
+        # Create subquery to check for existing feedback
+        feedback_subquery = Feedback.objects.filter(customer=user, order=OuterRef("pk"))
+        # Annotate queryset
+        orders = (
+            self.get_queryset()
+            .filter(cart__user=user)
+            .annotate(has_submitted_feedback=Exists(feedback_subquery))
+        )
         return Response(
             self.get_serializer(orders, many=True).data, status=status.HTTP_200_OK
         )
@@ -372,3 +398,33 @@ class OrderViewSet(GenericViewSet, CreateModelMixin):
         order.status = serializer.validated_data["status"]
         order.save()
         return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
+
+
+class FeedbackViewSet(GenericViewSet, CreateModelMixin):
+    queryset = Feedback.objects.select_related(
+        "customer", "order__store", "order__cart"
+    )
+    serializer_class = FeedbackSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if not self.request.user.is_staff:
+            queryset = queryset.filter(order__store=self.request.user.store)
+        return queryset
+
+    def get_permissions(self):
+        if self.action == "list":
+            if "Store Owner" not in self.get_user_groups():
+                raise PermissionDenied("You must own a store!")
+        return super().get_permissions()
+
+    def get_serializer_context(self):
+        return {"customer": self.request.user}
+
+    def get_user_groups(self):
+        user = self.request.user
+        user_groups = getattr(user, "_cached_groups", None)
+        if user_groups is None:
+            user_groups = set(user.groups.values_list("name", flat=True))
+            setattr(user, "_cached_groups", user_groups)
+        return user_groups

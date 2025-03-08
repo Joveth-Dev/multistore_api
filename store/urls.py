@@ -4,6 +4,7 @@ from .views import (
     CartItemViewSet,
     CartViewSet,
     CategoryViewSet,
+    FeedbackViewSet,
     OrderViewSet,
     ProductViewSet,
     StoreViewSet,
@@ -17,5 +18,6 @@ router.register("products", ProductViewSet),
 router.register("cartitems", CartItemViewSet, basename="cartitem")
 router.register("orders", OrderViewSet)
 router.register("cart", CartViewSet)
+router.register("feedbacks", FeedbackViewSet)
 
 urlpatterns = router.urls
