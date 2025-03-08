@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -9,7 +10,6 @@ from django.core.validators import (
 )
 from django.db import models
 from django.db.models.functions import Lower
-from django.utils import timezone
 
 from .validators import validate_file_size, validate_mobile_number
 
@@ -64,7 +64,7 @@ class Store(models.Model):
     @property
     def is_open(self):
         """Check if the store is currently open based on the opening and closing time."""
-        now = timezone.now().time()
+        now = datetime.now().time()
 
         if self.opening_time < self.closing_time:
             return (
