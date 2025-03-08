@@ -6,7 +6,7 @@ from django.db.models.query import Prefetch
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
-from rest_framework.mixins import CreateModelMixin
+from rest_framework.mixins import CreateModelMixin, ListModelMixin
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -16,6 +16,7 @@ from .models import Cart, CartItem, Category, Order, OrderItem, Product, Store
 from .permissions import IsCartItemOwner, IsCategoryOwner, IsProductOwner, IsStoreOwner
 from .serializers import (
     CartItemSerializer,
+    CartSerializer,
     CategorySerializer,
     CreateOrderSerializer,
     ListAndRetrieveCartItemSerializer,
@@ -186,6 +187,21 @@ class ProductViewSet(ModelViewSet):
         )
 
 
+class CartViewSet(GenericViewSet, ListModelMixin):
+    queryset = Cart.objects.prefetch_related(
+        Prefetch(
+            "cartitem_set", queryset=CartItem.objects.select_related("product__store__address")
+        )
+    ).annotate(cart_item_count=Count("cartitem"))
+    serializer_class = CartSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if not self.request.user.is_staff:
+            return queryset.filter(user=self.request.user)
+        return queryset
+
+
 class CartItemViewSet(ModelViewSet):
     serializer_class = CartItemSerializer
     permission_classes = [IsCartItemOwner]
@@ -266,9 +282,9 @@ class CartItemViewSet(ModelViewSet):
 
 
 class OrderViewSet(GenericViewSet, CreateModelMixin):
-    queryset = Order.objects.select_related("cart", "store__address").prefetch_related(
-        "items__product"
-    )
+    queryset = Order.objects.select_related(
+        "cart__user", "store__address"
+    ).prefetch_related("items__product")
     serializer_class = OrderSerializer
 
     def get_serializer_class(self):

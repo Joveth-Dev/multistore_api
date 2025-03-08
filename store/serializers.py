@@ -239,6 +239,11 @@ class OrderSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["total_price", "items", "store"]
 
+    def to_representation(self, instance: Order):
+        data = super().to_representation(instance)
+        data["user"] = {"id": instance.cart.user.pk, "name": str(instance.cart.user)}
+        return data
+
 
 class CreateOrderSerializer(serializers.ModelSerializer):
     class Meta:
@@ -250,3 +255,20 @@ class UpdateOrderStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ["status"]
+
+
+class CartSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Cart
+        fields = "__all__"
+
+    def to_representation(self, instance: Cart):
+        data = super().to_representation(instance)
+        data["cart_item_count"] = instance.cart_item_count
+        if instance.cartitem_set.count() > 0:
+            store: Store = instance.cartitem_set.first().product.store
+            data["store"] = StoreSerializer(store).data
+            data["store"][
+                "image"
+            ] = f"{settings.BASE_URL}{settings.MEDIA_URL}{store.image}"
+        return data
