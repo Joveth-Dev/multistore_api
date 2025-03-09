@@ -226,11 +226,12 @@ class OrderItemSerializer(serializers.ModelSerializer):
 class OrderStoreSerializer(serializers.ModelSerializer):
     class Meta:
         model = Store
-        fields = ["id", "name", "delivery_fee"]
+        fields = ["id", "name", "delivery_fee", "image"]
 
     def to_representation(self, instance: Store):
         data = super().to_representation(instance)
         data["display_name"] = instance.get_display_name()
+        data["image"] = f"{settings.BASE_URL}{settings.MEDIA_URL}{instance.image}"
         return data
 
 
