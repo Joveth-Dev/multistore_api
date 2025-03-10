@@ -105,6 +105,7 @@ class OrderAdmin(admin.ModelAdmin):
         "store",
         "cart",
         "status",
+        "type",
         "total_price",
         "created_at",
         "updated_at",

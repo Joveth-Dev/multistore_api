@@ -174,26 +174,37 @@ class CartItem(models.Model):
 class Order(models.Model):
     NEW = "New"
     ACCEPTED = "Accepted"
-    PREPARING_ORDER = "Preparing Order"
+    PREPARING_ORDER = "Being Prepared"
     OUT_FOR_DELIVERY = "Out For Delivery"
+    READY_FOR_PICK_UP = "Ready For Pick Up"
     COMPLETED = "Completed"
     REJECTED = "Rejected"
     STATUS_CHOICES = [
         (NEW, "New"),
         (ACCEPTED, "Accepted"),
-        (PREPARING_ORDER, "Preparing Order"),
+        (PREPARING_ORDER, "Being Prepared"),
         (OUT_FOR_DELIVERY, "Out For Delivery"),
+        (READY_FOR_PICK_UP, "Ready For Pick Up"),
         (COMPLETED, "Completed"),
         (REJECTED, "Rejected"),
+    ]
+    DELIVERY = "Delivery"
+    PICK_UP = "Pick Up"
+    TYPE_CHOICES = [
+        (DELIVERY, "Delivery"),
+        (PICK_UP, "Pick Up"),
     ]
     store = models.ForeignKey(Store, on_delete=models.PROTECT)
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=NEW)
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=DELIVERY)
     total_price = models.DecimalField(
         max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))]
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # for type PICK_UP
+    pick_up_datetime = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
         return f"Order {self.pk} - {self.cart.user} - {self.status}"
