@@ -266,7 +266,11 @@ class OrderSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance: Order):
         data = super().to_representation(instance)
-        data["user"] = {"id": instance.cart.user.pk, "name": str(instance.cart.user)}
+        data["user"] = {
+            "id": instance.cart.user.pk,
+            "name": str(instance.cart.user),
+            "address": instance.cart.user.address,
+        }
         if self.context.get("action") == "my_orders":
             data["has_submitted_feedback"] = instance.has_submitted_feedback
         return data
