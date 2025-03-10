@@ -319,16 +319,16 @@ class OrderViewSet(GenericViewSet, CreateModelMixin):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        print("validated_data", serializer.validated_data)
         store = serializer.validated_data.get("store")
         total_price = (
             sum(item.product.price * item.quantity for item in cart_items)
             + store.delivery_fee
         )
         order = Order.objects.create(
-            store=store,
             cart=cart,
             total_price=total_price,
-            status=Order.NEW,
+            **serializer.validated_data,
         )
 
         # Create OrderItem instances from CartItems

@@ -259,6 +259,8 @@ class OrderSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "feedbacks",
+            "type",
+            "pick_up_datetime",
         ]
         read_only_fields = ["total_price", "items", "store", "feedbacks"]
 
@@ -273,7 +275,11 @@ class OrderSerializer(serializers.ModelSerializer):
 class CreateOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
-        fields = ["store"]
+        fields = [
+            "store",
+            "type",
+            "pick_up_datetime",
+        ]
 
 
 class UpdateOrderStatusSerializer(serializers.ModelSerializer):
