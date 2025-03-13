@@ -321,6 +321,11 @@ class OrderViewSet(GenericViewSet, CreateModelMixin):
 
         print("validated_data", serializer.validated_data)
         store = serializer.validated_data.get("store")
+        
+        # set delivery_fee to 0 for Pick Up order
+        if serializer.validated_data.get("type") == "Pick Up":
+            store.delivery_fee = 0
+            
         total_price = (
             sum(item.product.price * item.quantity for item in cart_items)
             + store.delivery_fee
